@@ -1,0 +1,402 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WayfairGPT Prompt Coach</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans','Helvetica Neue',Arial,sans-serif;background:#FAFAFA;color:#1F2937}
+@keyframes slideDown{from{transform:translateX(-50%) translateY(-20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+input,select,textarea,button{font-family:inherit}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+// === SOUND ENGINE ===
+function playSuccessSound(){try{const c=new(window.AudioContext||window.webkitAudioContext)();[523.25,659.25,783.99,1046.50].forEach((f,i)=>{const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type="sine";o.frequency.setValueAtTime(f,c.currentTime+i*0.12);g.gain.setValueAtTime(0.15,c.currentTime+i*0.12);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+i*0.12+0.4);o.start(c.currentTime+i*0.12);o.stop(c.currentTime+i*0.12+0.4)})}catch(e){}}
+function playBadgeSound(){try{const c=new(window.AudioContext||window.webkitAudioContext)();[440,554.37,659.25,880,1108.73].forEach((f,i)=>{const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type="triangle";o.frequency.setValueAtTime(f,c.currentTime+i*0.1);g.gain.setValueAtTime(0.12,c.currentTime+i*0.1);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+i*0.1+0.5);o.start(c.currentTime+i*0.1);o.stop(c.currentTime+i*0.1+0.5)})}catch(e){}}
+function playGradeSound(grade){try{const c=new(window.AudioContext||window.webkitAudioContext)();const ch={A:[523.25,659.25,783.99],B:[440,523.25,659.25],C:[349.23,440,523.25]};(ch[grade]||ch.C).forEach(f=>{const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type=grade==="A"?"sine":"triangle";o.frequency.setValueAtTime(f,c.currentTime);g.gain.setValueAtTime(0.12,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.6);o.start(c.currentTime);o.stop(c.currentTime+0.6)})}catch(e){}}
+
+// === i18n ===
+const I={
+en:{signIn:"Sign in to get started",wrongCreds:"Wrong username or password",uname:"Username",pw:"Password",signInBtn:"Sign In",selLang:"Select Language",
+home:"Home",coach:"Coach",tips:"Tips",badges:"Badges",account:"Account",sOn:"Sound on",sOff:"Sound off",
+hero:"Get better results, faster with better prompts. Use this simple app to improve how you work with WayfairGPT.",
+cta:"Try the Coach →",how:"How It Works",s1:"Paste your prompt",s1d:"Copy any prompt you use with WayfairGPT",s2:"Get your grade",s2d:"See an A, B, or C grade with tips to improve",s3:"Earn badges",s3d:"Track your progress and earn fun rewards",
+prog:"Your Progress",pchk:"prompts checked",bg:"best grade",be:"badges earned",
+ct:"Prompt Coach",cs:"Paste any prompt below and get your grade with tips to make it better.",
+ph:'Paste your WayfairGPT prompt here...\n\nExample: "Write a product description for a velvet sofa"',
+chr:"characters",ck:"Check My Prompt ✨",res:"Here\u2019s how your prompt did:",fnd:"✓ found",mis:"✕ missing",
+ta:"Try Another Prompt",et:"Edit This Prompt",gA:"🌟 Great prompt!",gB:"👍 Good start!",gC:"💡 Let\u2019s improve it!",
+tt:"Prompting Tips",ts:"Simple ways to get better answers from WayfairGPT.",
+diff:"See the difference a good prompt makes:",bef:"Before",aft:"After",why:"💡 Why it works:",pro:"Prompt like a Pro ✨",
+bt:"Your Badges",bs:"Earn badges by using the Coach. Keep going to unlock them all!",
+bE:"Badge Earned!",er:"✓ EARNED",lk:"LOCKED",se:"Start Earning Badges →",
+b1:"First Prompt",b1d:"You checked your first prompt!",b2:"Getting Better",b2d:"You improved a prompt score",
+b3:"A Grade",b3d:"You got your first A!",b4:"Prompt Pro",b4d:"You checked 5 prompts!",
+b5:"On a Roll",b5d:"3 prompts in a row!",b6:"Prompt Master",b6d:"You scored 90+!",
+at:"Account",as:"Your profile helps us give you better tips for your role.",
+fn:"First Name",ln:"Last Name",loc:"Location",dept:"Department",jt:"Job Title",
+ctk:"Common Tasks",cwf:"Common Workflows",sp:"Save Profile",sv:"✓ Saved!",
+set:"Settings",sfx:"Sound Effects",sfd:"Play sounds for grades and badges",
+rpw:"Reset Password",rpd:"Change your login password",rb:"Reset",lang:"Language",ld:"App display language",
+pn:"Your profile helps us give you better tips. Your data is not shared outside of Wayfair. Usage analytics are aggregated and deidentified.",
+c1:"Role",c1t:"Tell WayfairGPT who to be",c1e:"You are a product copywriter for Wayfair…",
+c2:"Context",c2t:"Add details about your task",c2e:"Include specific details about a walnut dining table, seats 6…",
+c3:"Format",c3t:"Say how you want the answer",c3e:"Keep the tone warm and friendly, under 60 words…",
+c4:"Examples",c4t:"Show what good looks like",c4e:'Here is an example: "Built for family dinners, this table brings everyone together."',
+c5:"Guardrails",c5t:"Say what to avoid",c5e:"Don\u2019t use jargon. Avoid technical language.",
+c6:"Check",c6t:"Ask it to flag anything unclear",c6e:"If you\u2019re not sure about any details, flag them for me to review.",
+e1b:"Write a product description.",e1w:"The A prompt tells WayfairGPT who to be, adds product details and audience, sets the tone and length, shows an example, says what to avoid, and asks it to flag anything unclear.",
+e2b:"Help me with a customer email.",e2w:"Adding the role, the situation, specific options, tone, length, an example opening, what to avoid, and a check step makes the answer ready to send.",
+tip:"Tip:",tryL:"Try:"},
+es:{signIn:"Inicia sesión para comenzar",wrongCreds:"Usuario o contraseña incorrectos",uname:"Usuario",pw:"Contraseña",signInBtn:"Iniciar Sesión",selLang:"Seleccionar Idioma",
+home:"Inicio",coach:"Entrenador",tips:"Consejos",badges:"Insignias",account:"Cuenta",sOn:"Sonido activado",sOff:"Sonido desactivado",
+hero:"Obtén mejores resultados, más rápido, con mejores prompts. Usa esta app para mejorar cómo trabajas con WayfairGPT.",
+cta:"Probar el Entrenador →",how:"Cómo Funciona",s1:"Pega tu prompt",s1d:"Copia cualquier prompt que uses con WayfairGPT",s2:"Recibe tu nota",s2d:"Ve tu nota A, B o C con consejos para mejorar",s3:"Gana insignias",s3d:"Sigue tu progreso y gana premios divertidos",
+prog:"Tu Progreso",pchk:"prompts revisados",bg:"mejor nota",be:"insignias ganadas",
+ct:"Entrenador de Prompts",cs:"Pega cualquier prompt abajo y recibe tu nota con consejos para mejorarlo.",
+ph:'Pega tu prompt aquí...\n\nEjemplo: "Escribe una descripción de producto para un sofá de terciopelo"',
+chr:"caracteres",ck:"Revisar Mi Prompt ✨",res:"Así le fue a tu prompt:",fnd:"✓ encontrado",mis:"✕ falta",
+ta:"Probar Otro Prompt",et:"Editar Este Prompt",gA:"🌟 ¡Gran prompt!",gB:"👍 ¡Buen comienzo!",gC:"💡 ¡Vamos a mejorarlo!",
+tt:"Consejos de Prompts",ts:"Formas simples de obtener mejores respuestas de WayfairGPT.",
+diff:"Mira la diferencia que hace un buen prompt:",bef:"Antes",aft:"Después",why:"💡 Por qué funciona:",pro:"Haz Prompts como un Pro ✨",
+bt:"Tus Insignias",bs:"¡Gana insignias usando el Entrenador. Sigue adelante para desbloquearlas todas!",
+bE:"¡Insignia Ganada!",er:"✓ GANADA",lk:"BLOQUEADA",se:"Comienza a Ganar Insignias →",
+b1:"Primer Prompt",b1d:"¡Revisaste tu primer prompt!",b2:"Mejorando",b2d:"Mejoraste una puntuación",
+b3:"Nota A",b3d:"¡Obtuviste tu primera A!",b4:"Prompt Pro",b4d:"¡Revisaste 5 prompts!",
+b5:"En Racha",b5d:"¡3 prompts seguidos!",b6:"Maestro de Prompts",b6d:"¡Puntuaste 90+!",
+at:"Cuenta",as:"Tu perfil nos ayuda a darte mejores consejos para tu rol.",
+fn:"Nombre",ln:"Apellido",loc:"Ubicación",dept:"Departamento",jt:"Cargo",
+ctk:"Tareas Frecuentes",cwf:"Flujos de Trabajo",sp:"Guardar Perfil",sv:"✓ ¡Guardado!",
+set:"Configuración",sfx:"Efectos de Sonido",sfd:"Reproduce sonidos para notas e insignias",
+rpw:"Cambiar Contraseña",rpd:"Cambia tu contraseña",rb:"Cambiar",lang:"Idioma",ld:"Idioma de la aplicación",
+pn:"Tu perfil nos ayuda a darte mejores consejos. Tus datos no se comparten fuera de Wayfair. Los análisis de uso son agregados y desidentificados.",
+c1:"Rol",c1t:"Dile a WayfairGPT quién ser",c1e:"Eres un redactor de productos…",
+c2:"Contexto",c2t:"Agrega detalles sobre tu tarea",c2e:"Mesa de nogal, 6 asientos…",
+c3:"Formato",c3t:"Di cómo quieres la respuesta",c3e:"Tono cálido, menos de 60 palabras…",
+c4:"Ejemplos",c4t:"Muestra cómo se ve uno bueno",c4e:'Ejemplo: "Hecha para cenas familiares."',
+c5:"Límites",c5t:"Di qué evitar",c5e:"No uses jerga. Evita lenguaje técnico.",
+c6:"Verificar",c6t:"Pídele que marque lo que no esté claro",c6e:"Si no estás seguro, márcalo.",
+e1b:"Escribe una descripción de producto.",e1w:"El prompt A dice quién ser, agrega detalles y audiencia, establece tono y extensión, muestra ejemplo, dice qué evitar y pide marcar lo incierto.",
+e2b:"Ayúdame con un email de cliente.",e2w:"Agregar rol, situación, opciones, tono, extensión, ejemplo, qué evitar y verificación hace la respuesta lista para enviar.",
+tip:"Consejo:",tryL:"Prueba:"},
+zh:{signIn:"登录开始使用",wrongCreds:"用户名或密码错误",uname:"用户名",pw:"密码",signInBtn:"登录",selLang:"选择语言",
+home:"首页",coach:"教练",tips:"技巧",badges:"徽章",account:"账户",sOn:"声音开",sOff:"声音关",
+hero:"用更好的提示词，更快地获得更好的结果。使用这个应用来改善你使用WayfairGPT的方式。",
+cta:"开始使用教练 →",how:"如何使用",s1:"粘贴提示词",s1d:"复制你在WayfairGPT中使用的提示词",s2:"获得评分",s2d:"查看A、B或C等级以及建议",s3:"获得徽章",s3d:"跟踪进度并获得奖励",
+prog:"你的进度",pchk:"已检查",bg:"最佳等级",be:"已获得徽章",
+ct:"提示词教练",cs:"粘贴提示词，获得评分和改进建议。",
+ph:'在此粘贴提示词...',chr:"字符",ck:"检查提示词 ✨",res:"提示词表现：",fnd:"✓ 找到",mis:"✕ 缺少",
+ta:"再试一个",et:"编辑提示词",gA:"🌟 优秀！",gB:"👍 良好开始！",gC:"💡 改进它！",
+tt:"提示词技巧",ts:"获得更好答案的简单方法。",
+diff:"看看好提示词的区别：",bef:"之前",aft:"之后",why:"💡 为什么有效：",pro:"像专家一样写提示词 ✨",
+bt:"你的徽章",bs:"继续加油解锁全部！",
+bE:"获得徽章！",er:"✓ 已获得",lk:"锁定",se:"开始获得徽章 →",
+b1:"第一个",b1d:"检查了第一个！",b2:"越来越好",b2d:"提高了分数",
+b3:"A等级",b3d:"获得第一个A！",b4:"专家",b4d:"检查了5个！",
+b5:"连续进步",b5d:"连续3个！",b6:"大师",b6d:"90+分！",
+at:"账户",as:"你的资料帮助我们提供更好的建议。",
+fn:"名",ln:"姓",loc:"位置",dept:"部门",jt:"职位",
+ctk:"常见任务",cwf:"工作流程",sp:"保存",sv:"✓ 已保存！",
+set:"设置",sfx:"声音效果",sfd:"播放等级和徽章声音",
+rpw:"重置密码",rpd:"更改登录密码",rb:"重置",lang:"语言",ld:"应用语言",
+pn:"你的资料帮助提供更好的建议。数据不在Wayfair外共享。使用分析已聚合和去识别化。",
+c1:"角色",c1t:"告诉它扮演谁",c1e:"你是Wayfair产品文案…",
+c2:"上下文",c2t:"添加任务详情",c2e:"核桃木桌6人座等细节…",
+c3:"格式",c3t:"说明想要怎样的答案",c3e:"温暖友好语气，60字以内…",
+c4:"示例",c4t:"展示好的范例",c4e:'例子: "为家庭晚餐而制。"',
+c5:"护栏",c5t:"说明要避免什么",c5e:"不用行话。避免技术语言。",
+c6:"检查",c6t:"让它标记不清楚的地方",c6e:"不确定的细节请标记。",
+e1b:"写产品描述。",e1w:"A级提示词告诉角色、细节、受众、语气、长度、示例、避免项和检查步骤。",
+e2b:"帮我写客户邮件。",e2w:"添加角色、情况、选项、语气、长度、示例、避免项和检查使答案可直接发送。",
+tip:"提示：",tryL:"试试："},
+hi:{signIn:"शुरू करें",wrongCreds:"गलत यूजरनेम/पासवर्ड",uname:"यूजरनेम",pw:"पासवर्ड",signInBtn:"साइन इन",selLang:"भाषा चुनें",
+home:"होम",coach:"कोच",tips:"टिप्स",badges:"बैज",account:"खाता",sOn:"ध्वनि चालू",sOff:"ध्वनि बंद",
+hero:"बेहतर प्रॉम्प्ट से तेजी से बेहतर परिणाम पाएं। WayfairGPT के साथ काम सुधारें।",
+cta:"कोच आजमाएं →",how:"कैसे काम करता है",s1:"प्रॉम्प्ट पेस्ट करें",s1d:"WayfairGPT में उपयोग किया प्रॉम्प्ट कॉपी करें",s2:"ग्रेड पाएं",s2d:"A, B या C ग्रेड देखें",s3:"बैज कमाएं",s3d:"प्रगति ट्रैक करें और इनाम पाएं",
+prog:"आपकी प्रगति",pchk:"जांचे गए",bg:"सर्वश्रेष्ठ",be:"प्राप्त बैज",
+ct:"प्रॉम्प्ट कोच",cs:"नीचे प्रॉम्प्ट पेस्ट करें और ग्रेड प्राप्त करें।",
+ph:'यहाँ प्रॉम्प्ट पेस्ट करें...',chr:"अक्षर",ck:"जांचें ✨",res:"परिणाम:",fnd:"✓ मिला",mis:"✕ गायब",
+ta:"दूसरा आजमाएं",et:"संपादित करें",gA:"🌟 शानदार!",gB:"👍 अच्छी शुरुआत!",gC:"💡 सुधारें!",
+tt:"टिप्स",ts:"WayfairGPT से बेहतर जवाब के तरीके।",
+diff:"अच्छा प्रॉम्प्ट क्या फर्क लाता है:",bef:"पहले",aft:"बाद में",why:"💡 क्यों काम करता है:",pro:"प्रो की तरह प्रॉम्प्ट करें ✨",
+bt:"आपके बैज",bs:"सभी अनलॉक करें!",
+bE:"बैज मिला!",er:"✓ प्राप्त",lk:"लॉक",se:"बैज कमाएं →",
+b1:"पहला",b1d:"पहला जांचा!",b2:"सुधार",b2d:"स्कोर सुधारा",
+b3:"A ग्रेड",b3d:"पहला A!",b4:"प्रो",b4d:"5 जांचे!",
+b5:"लगातार",b5d:"3 लगातार!",b6:"मास्टर",b6d:"90+!",
+at:"खाता",as:"प्रोफ़ाइल बेहतर सुझाव देती है।",
+fn:"पहला नाम",ln:"उपनाम",loc:"स्थान",dept:"विभाग",jt:"पद",
+ctk:"कार्य",cwf:"वर्कफ़्लो",sp:"सहेजें",sv:"✓ सहेजा!",
+set:"सेटिंग्स",sfx:"ध्वनि",sfd:"ग्रेड और बैज के लिए ध्वनि",
+rpw:"पासवर्ड रीसेट",rpd:"पासवर्ड बदलें",rb:"रीसेट",lang:"भाषा",ld:"ऐप भाषा",
+pn:"प्रोफ़ाइल बेहतर सुझाव देती है। डेटा Wayfair के बाहर साझा नहीं। विश्लेषण समेकित और अज्ञात हैं।",
+c1:"भूमिका",c1t:"बताएं कौन बनना है",c1e:"आप Wayfair प्रोडक्ट लेखक हैं…",
+c2:"संदर्भ",c2t:"विवरण जोड़ें",c2e:"अखरोट टेबल, 6 सीटें जैसे विवरण…",
+c3:"प्रारूप",c3t:"बताएं जवाब कैसा चाहते हैं",c3e:"गर्म लहजा, 60 शब्दों से कम…",
+c4:"उदाहरण",c4t:"अच्छा कैसा दिखाएं",c4e:'उदाहरण: "पारिवारिक खाने के लिए बनी।"',
+c5:"सीमाएं",c5t:"बचने को बताएं",c5e:"शब्दजाल न उपयोग करें।",
+c6:"जांच",c6t:"अस्पष्ट चिह्नित करने को कहें",c6e:"अनिश्चित हों तो चिह्नित करें।",
+e1b:"उत्पाद विवरण लिखें।",e1w:"भूमिका, विवरण, दर्शक, लहजा, लंबाई, उदाहरण, बचना और जांच जोड़ता है।",
+e2b:"ग्राहक ईमेल में मदद।",e2w:"भूमिका, स्थिति, विकल्प, लहजा, लंबाई, उदाहरण, बचना और जांच से जवाब तैयार होता है।",
+tip:"सुझाव:",tryL:"आजमाएं:"},
+pl:{signIn:"Zaloguj się",wrongCreds:"Błędne dane",uname:"Nazwa użytkownika",pw:"Hasło",signInBtn:"Zaloguj",selLang:"Wybierz język",
+home:"Start",coach:"Trener",tips:"Porady",badges:"Odznaki",account:"Konto",sOn:"Dźwięk wł.",sOff:"Dźwięk wył.",
+hero:"Lepsze prompty = lepsze wyniki. Użyj tej aplikacji, aby poprawić pracę z WayfairGPT.",
+cta:"Wypróbuj Trenera →",how:"Jak to działa",s1:"Wklej prompt",s1d:"Skopiuj prompt z WayfairGPT",s2:"Otrzymaj ocenę",s2d:"A, B lub C ze wskazówkami",s3:"Zdobywaj odznaki",s3d:"Śledź postępy i nagrody",
+prog:"Twój postęp",pchk:"sprawdzonych",bg:"najlepsza ocena",be:"zdobytych odznak",
+ct:"Trener Promptów",cs:"Wklej prompt i otrzymaj ocenę.",
+ph:'Wklej prompt tutaj...',chr:"znaków",ck:"Sprawdź ✨",res:"Wynik:",fnd:"✓ znaleziono",mis:"✕ brak",
+ta:"Inny prompt",et:"Edytuj",gA:"🌟 Świetny!",gB:"👍 Dobry początek!",gC:"💡 Popraw!",
+tt:"Porady",ts:"Proste sposoby na lepsze odpowiedzi.",
+diff:"Różnica:",bef:"Przed",aft:"Po",why:"💡 Dlaczego działa:",pro:"Promptuj jak Pro ✨",
+bt:"Twoje odznaki",bs:"Zdobywaj odznaki!",
+bE:"Odznaka!",er:"✓ ZDOBYTA",lk:"ZABLOKOWANA",se:"Zacznij →",
+b1:"Pierwszy",b1d:"Pierwszy prompt!",b2:"Lepiej",b2d:"Poprawa!",
+b3:"Ocena A",b3d:"Pierwsze A!",b4:"Pro",b4d:"5 promptów!",
+b5:"Seria",b5d:"3 z rzędu!",b6:"Mistrz",b6d:"90+!",
+at:"Konto",as:"Profil pomaga w lepszych poradach.",
+fn:"Imię",ln:"Nazwisko",loc:"Lokalizacja",dept:"Dział",jt:"Stanowisko",
+ctk:"Zadania",cwf:"Procesy",sp:"Zapisz",sv:"✓ Zapisano!",
+set:"Ustawienia",sfx:"Dźwięki",sfd:"Dźwięki dla ocen i odznak",
+rpw:"Resetuj hasło",rpd:"Zmień hasło",rb:"Resetuj",lang:"Język",ld:"Język aplikacji",
+pn:"Profil pomaga w poradach. Dane nie są udostępniane poza Wayfair. Analityka jest zagregowana i zanonimizowana.",
+c1:"Rola",c1t:"Powiedz, kim ma być",c1e:"Jesteś copywriterem Wayfair…",
+c2:"Kontekst",c2t:"Dodaj szczegóły",c2e:"Stół orzechowy, 6 miejsc…",
+c3:"Format",c3t:"Jak chcesz odpowiedź",c3e:"Ciepły ton, poniżej 60 słów…",
+c4:"Przykłady",c4t:"Pokaż dobry wynik",c4e:'Przykład: "Na rodzinne kolacje."',
+c5:"Ograniczenia",c5t:"Czego unikać",c5e:"Bez żargonu.",
+c6:"Weryfikacja",c6t:"Oznacz niejasności",c6e:"Jeśli niepewny, oznacz.",
+e1b:"Napisz opis produktu.",e1w:"A mówi: rolę, szczegóły, ton, przykład, ograniczenia, weryfikację.",
+e2b:"Pomóż z mailem.",e2w:"Rola, sytuacja, opcje, ton, przykład, ograniczenia i weryfikacja.",
+tip:"Wskazówka:",tryL:"Spróbuj:"}
+};
+
+const P="#7F187F";
+const LANGS=[{code:"en",flag:"🇺🇸",name:"English"},{code:"es",flag:"🇪🇸",name:"Español"},{code:"hi",flag:"🇮🇳",name:"हिन्दी (Hindi)"},{code:"zh",flag:"🇨🇳",name:"中文 (Mandarin)"},{code:"pl",flag:"🇵🇱",name:"Polski"}];
+const KEYWORDS={role:["you are","act as","role","expert","specialist","advisor","writer","analyst","assistant","designer","engineer","coach","consultant"],context:["because","background","goal","about","details","specific","include","product","customer","data","numbers","requirements","budget","timeline","deadline","audience","target"],format:["format","bullet","list","paragraph","table","steps","json","markdown","email","short","long","words","sentences","tone","style","structured","outline","summary","headers"],examples:["example","like this","similar to","such as","here is","sample","template","reference","model","based on","inspired by","format like"],guardrails:["don't","avoid","never","do not","keep","limit","without","exclude","no","only","must not","refrain","skip","stay away","omit"],check:["flag","unsure","confidence","verify","check","review","not sure","uncertain","clarify","confirm","double check","validate","question","ask me"]};
+const CRIT=[{id:"role",k:"c1",kt:"c1t",ke:"c1e",pts:25,kw:KEYWORDS.role},{id:"context",k:"c2",kt:"c2t",ke:"c2e",pts:25,kw:KEYWORDS.context},{id:"format",k:"c3",kt:"c3t",ke:"c3e",pts:20,kw:KEYWORDS.format},{id:"examples",k:"c4",kt:"c4t",ke:"c4e",pts:15,kw:KEYWORDS.examples},{id:"guardrails",k:"c5",kt:"c5t",ke:"c5e",pts:10,kw:KEYWORDS.guardrails},{id:"check",k:"c6",kt:"c6t",ke:"c6e",pts:5,kw:KEYWORDS.check}];
+const BADGES_DEF=[{id:"first_prompt",n:"b1",d:"b1d",icon:"🎯"},{id:"improver",n:"b2",d:"b2d",icon:"📈"},{id:"a_grade",n:"b3",d:"b3d",icon:"🌟"},{id:"five_prompts",n:"b4",d:"b4d",icon:"🏆"},{id:"streak",n:"b5",d:"b5d",icon:"🔥"},{id:"perfect",n:"b6",d:"b6d",icon:"👑"}];
+const LOCATIONS=["Boston (HQ)","Mountain View, CA","Bangalore, India","London, UK","Toronto, Canada","Galway, Ireland","Shanghai, China","Athens, GA","Cranbury, NJ","Savannah, GA","Plainfield, IN","Hebron, KY","Remote (US)","Remote (UK)","Remote (Poland)"];
+const DEPTS=["Engineering & Technology","Fulfillment & Home Delivery","Business & Operations","Customer Service","Sales","Marketing","HR","Finance","IT","Supply Chain","Merchandising"];
+const EX1_GOOD='You are an expert product writer and specialist for Wayfair. Write a short product description about our mid-century walnut dining table. Include specific details: seats 6, solid walnut, 72 inches long. The target audience is customers looking for a modern dining room. Keep the tone warm and friendly, under 60 words. Don\u2019t use jargon and avoid technical language. Here is an example of our style: "Built for family dinners and Sunday brunches, this table brings everyone together." If you are not sure about any product details, flag them for me to review.';
+const EX2_GOOD='You are an expert customer care specialist for Wayfair. A customer\u2019s coffee table arrived with a scratch on the top. Your goal is to write a short, friendly email about this specific product issue. Include an offer of a 15% refund or free replacement, and ask the customer what they\u2019d prefer. Keep the tone warm and the email under 80 words. Don\u2019t use formal language and avoid anything that sounds like a template. Here is a sample opening: "We\u2019re sorry your table didn\u2019t arrive in perfect shape." If you are not sure about our return policy details, flag them so I can confirm.';
+
+function scorePrompt(text){const lw=text.toLowerCase(),len=text.trim().length;let total=0;const bd=[];CRIT.forEach(c=>{const m=c.kw.filter(k=>lw.includes(k));let pts=0;if(m.length>=3)pts=c.pts;else if(m.length===2)pts=Math.round(c.pts*0.7);else if(m.length===1)pts=Math.round(c.pts*0.4);if(c.id==="context"&&len>150)pts=Math.min(c.pts,pts+5);if(c.id==="context"&&len>300)pts=Math.min(c.pts,pts+5);total+=pts;bd.push({...c,earned:pts,found:m.length>0})});if(len<30)total=Math.max(0,total-15);return{score:Math.min(100,Math.max(0,total)),breakdown:bd}}
+function checkBadge(id,s){if(id==="first_prompt")return s.total>=1;if(id==="improver")return s.improved>=1;if(id==="a_grade")return s.bestGrade==="A";if(id==="five_prompts")return s.total>=5;if(id==="streak")return s.streak>=3;if(id==="perfect")return s.bestScore>=90;return false}
+
+const Logo=({s=28})=><svg width={s} height={s} viewBox="0 0 40 40"><path d="M20 4 L28 12 L20 20 L12 12 Z" fill="#7F187F"/><path d="M28 12 L36 20 L28 28 L20 20 Z" fill="#C6D636"/><path d="M20 20 L28 28 L20 36 L12 28 Z" fill="#82D170"/><path d="M12 12 L20 20 L12 28 L4 20 Z" fill="#F8CF1C"/></svg>;
+const MiniBar=({v,color})=><div style={{height:6,background:"#E5E7EB",borderRadius:3}}><div style={{width:`${v}%`,height:"100%",background:color,borderRadius:3,transition:"width 0.8s ease"}}/></div>;
+const sColor=s=>s>=70?"#16A34A":s>=50?"#CA8A04":"#DC2626";
+const IS={width:"100%",padding:"10px 14px",border:"1.5px solid #E5E7EB",borderRadius:8,fontSize:14,outline:"none",boxSizing:"border-box"};
+const LBL={fontSize:11,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:4};
+
+function App(){
+  const[lang,setLang]=useState("en");
+  const[loggedIn,setLoggedIn]=useState(false);
+  const[loginUser,setLoginUser]=useState("");
+  const[loginPass,setLoginPass]=useState("");
+  const[loginError,setLoginError]=useState(false);
+  const[view,setView]=useState("home");
+  const[prompt,setPrompt]=useState("");
+  const[result,setResult]=useState(null);
+  const[stats,setStats]=useState({total:0,improved:0,bestScore:0,bestGrade:"C",streak:0,lastScore:0});
+  const[earnedBadges,setEarnedBadges]=useState([]);
+  const[newBadge,setNewBadge]=useState(null);
+  const[soundEnabled,setSoundEnabled]=useState(true);
+  const[profile,setProfile]=useState({firstName:"Wade",lastName:"Fair",location:"Boston (HQ)",department:"Customer Service",jobTitle:"Customer Experience Lead",commonTasks:"Response drafting, escalation handling",commonWorkflows:"Customer inquiry → draft → review → send"});
+  const[profileSaved,setProfileSaved]=useState(false);
+  const[fadeIn,setFadeIn]=useState(false);
+  useEffect(()=>{setTimeout(()=>setFadeIn(true),80)},[]);
+
+  const t=k=>(I[lang]||I.en)[k]||I.en[k]||k;
+  const getGrade=s=>{if(s>=70)return{letter:"A",label:t("gA"),color:"#16A34A",bg:"#DCFCE7",border:"#4ADE80"};if(s>=50)return{letter:"B",label:t("gB"),color:"#CA8A04",bg:"#FEF9C3",border:"#FACC15"};return{letter:"C",label:t("gC"),color:"#DC2626",bg:"#FEE2E2",border:"#F87171"}};
+
+  const tryLogin=()=>{if(loginUser.trim()==="Wade Fair"&&loginPass==="Prompt2026!"){setLoggedIn(true);setLoginError(false)}else setLoginError(true)};
+  const doAnalyze=()=>{const r=scorePrompt(prompt),g=getGrade(r.score);const ns={...stats};ns.total+=1;ns.streak+=1;if(r.score>ns.bestScore)ns.bestScore=r.score;if(r.score>stats.lastScore&&stats.lastScore>0)ns.improved+=1;ns.lastScore=r.score;if(g.letter==="A")ns.bestGrade="A";else if(g.letter==="B"&&ns.bestGrade!=="A")ns.bestGrade="B";const ne=BADGES_DEF.filter(b=>checkBadge(b.id,ns)&&!earnedBadges.find(e=>e.id===b.id));const nb=ne.length>0?ne[0]:null;if(soundEnabled){setTimeout(()=>playGradeSound(g.letter),300);if(g.letter==="A")setTimeout(()=>playSuccessSound(),800)}if(nb&&soundEnabled)setTimeout(()=>playBadgeSound(),1200);setResult(r);setStats(ns);setEarnedBadges([...earnedBadges,...ne]);if(nb){setNewBadge(nb);setTimeout(()=>setNewBadge(null),3500)}};
+
+  if(!loggedIn)return(
+    <div style={{minHeight:"100vh",background:"#FAFAFA",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}>
+      <div style={{background:"white",border:"1px solid #E5E7EB",borderRadius:16,padding:"40px 44px",width:400,boxShadow:"0 4px 24px rgba(0,0,0,0.06)",textAlign:"center"}}>
+        <Logo s={40}/><h1 style={{fontSize:18,fontWeight:700,color:P,margin:"12px 0 4px"}}>WayfairGPT Prompt Coach</h1>
+        <p style={{fontSize:13,color:"#6B7280",marginBottom:24}}>{t("signIn")}</p>
+        {loginError&&<div style={{color:"#DC2626",fontSize:12,fontWeight:600,marginBottom:12}}>{t("wrongCreds")}</div>}
+        <div style={{textAlign:"left",marginBottom:12}}><label style={LBL}>{t("uname")}</label><input value={loginUser} onChange={e=>setLoginUser(e.target.value)} onKeyDown={e=>e.key==="Enter"&&document.getElementById("pw")?.focus()} style={{...IS}}/></div>
+        <div style={{textAlign:"left",marginBottom:16}}><label style={LBL}>{t("pw")}</label><input id="pw" type="password" value={loginPass} onChange={e=>setLoginPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&tryLogin()} style={{...IS}}/></div>
+        <div style={{textAlign:"left",marginBottom:20}}><label style={LBL}>{t("selLang")}</label><select value={lang} onChange={e=>setLang(e.target.value)} style={{...IS,background:"white"}}>{LANGS.map(l=><option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select></div>
+        <button onClick={tryLogin} style={{width:"100%",padding:12,background:P,color:"white",border:"none",borderRadius:8,fontSize:14,fontWeight:700,cursor:"pointer"}}>{t("signInBtn")}</button>
+      </div>
+    </div>);
+
+  const navItems=["home","coach","tips","badges","account"];
+  const navLabel=v=>t(v==="home"?"home":v==="coach"?"coach":v==="tips"?"tips":v==="badges"?"badges":"account");
+  const g=result?getGrade(result.score):null;
+  const bg2=stats.bestScore>0?getGrade(stats.bestScore):null;
+
+  return(
+    <div style={{minHeight:"100vh",background:"white",fontFamily:"'DM Sans',sans-serif",opacity:fadeIn?1:0,transition:"opacity 0.5s",position:"relative"}}>
+      {/* HEADER */}
+      <div style={{background:"white",borderBottom:"2px solid #F3F4F6",padding:"12px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"relative",zIndex:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}><Logo s={30}/><span style={{fontSize:17,fontWeight:700,color:P,letterSpacing:"-0.02em"}}>wayfair</span><span style={{color:"#D1D5DB",fontSize:14,margin:"0 4px"}}>|</span><span style={{fontSize:15,fontWeight:600,color:"#374151"}}>{t("ct")}</span></div>
+        <div style={{display:"flex",gap:4,alignItems:"center"}}>
+          {navItems.map(v=><div key={v} onClick={()=>{setView(v);if(v!=="coach")setResult(null)}} style={{padding:"7px 14px",borderRadius:20,cursor:"pointer",fontSize:13,fontWeight:600,background:view===v?P:"transparent",color:view===v?"white":"#6B7280",transition:"all 0.2s"}}>{navLabel(v)}</div>)}
+          <div onClick={()=>setSoundEnabled(!soundEnabled)} style={{padding:"8px 12px",borderRadius:20,cursor:"pointer",fontSize:22,color:soundEnabled?P:"#D1D5DB"}} title={soundEnabled?t("sOn"):t("sOff")}>{soundEnabled?"🔊":"🔇"}</div>
+        </div>
+      </div>
+
+      {newBadge&&<div style={{position:"fixed",top:70,left:"50%",transform:"translateX(-50%)",background:"white",border:"2px solid #4ADE80",borderRadius:16,padding:"14px 28px",boxShadow:"0 8px 32px rgba(0,0,0,0.12)",zIndex:999,display:"flex",alignItems:"center",gap:12,animation:"slideDown 0.4s ease"}}><span style={{fontSize:32}}>{newBadge.icon}</span><div><div style={{fontSize:14,fontWeight:700,color:"#16A34A"}}>{t("bE")}</div><div style={{fontSize:13,color:"#374151",fontWeight:600}}>{t(newBadge.n)}</div><div style={{fontSize:11,color:"#6B7280"}}>{t(newBadge.d)}</div></div></div>}
+
+      <div style={{maxWidth:900,margin:"0 auto",padding:"30px 24px 80px",position:"relative",zIndex:5}}>
+
+      {/* HOME */}
+      {view==="home"&&<div style={{textAlign:"center"}}>
+        <div style={{background:"linear-gradient(135deg, #F3E8F9 0%, #FEF9C3 50%, #DCFCE7 100%)",borderRadius:20,padding:"48px 40px 40px",marginBottom:32,position:"relative",overflow:"hidden"}}>
+          <div style={{fontSize:42,marginBottom:8}}>✨</div>
+          <h1 style={{fontSize:28,fontWeight:800,color:P,margin:"0 0 10px",lineHeight:1.2}}>WayfairGPT<br/>{t("ct")}</h1>
+          <p style={{fontSize:15,color:"#4B5563",maxWidth:460,margin:"0 auto 24px",lineHeight:1.5}}>{t("hero")}</p>
+          <div onClick={()=>setView("coach")} style={{display:"inline-flex",alignItems:"center",gap:8,background:P,color:"white",padding:"14px 32px",borderRadius:12,fontSize:15,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 16px rgba(127,24,127,0.25)"}}>{t("cta")}</div>
+        </div>
+        <h2 style={{fontSize:18,fontWeight:700,color:"#111827",marginBottom:18}}>{t("how")}</h2>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,marginBottom:32}}>
+          {[{icon:"📝",t:t("s1"),d:t("s1d")},{icon:"📊",t:t("s2"),d:t("s2d")},{icon:"🏆",t:t("s3"),d:t("s3d")}].map((s,i)=><div key={i} style={{background:"#FAFAFA",borderRadius:14,padding:"24px 20px",border:"1px solid #F3F4F6"}}><div style={{fontSize:28,marginBottom:8}}>{s.icon}</div><div style={{fontSize:14,fontWeight:700,color:"#111827",marginBottom:4}}>{s.t}</div><div style={{fontSize:13,color:"#6B7280",lineHeight:1.4}}>{s.d}</div></div>)}
+        </div>
+        {stats.total>0&&<div style={{background:"#F9FAFB",borderRadius:14,padding:"20px 24px",border:"1px solid #E5E7EB"}}><div style={{fontSize:14,fontWeight:700,color:"#111827",marginBottom:12}}>{t("prog")}</div><div style={{display:"flex",justifyContent:"center",gap:32}}><div><div style={{fontSize:28,fontWeight:800,color:P}}>{stats.total}</div><div style={{fontSize:11,color:"#6B7280"}}>{t("pchk")}</div></div><div><div style={{fontSize:28,fontWeight:800,color:"#16A34A"}}>{bg2?.letter}</div><div style={{fontSize:11,color:"#6B7280"}}>{t("bg")}</div></div><div><div style={{fontSize:28,fontWeight:800,color:"#F59E0B"}}>{earnedBadges.length}</div><div style={{fontSize:11,color:"#6B7280"}}>{t("be")}</div></div></div></div>}
+      </div>}
+
+      {/* COACH */}
+      {view==="coach"&&<div>
+        <h1 style={{fontSize:22,fontWeight:700,color:"#111827",marginBottom:4}}>{t("ct")}</h1>
+        <p style={{fontSize:13,color:"#6B7280",marginBottom:20}}>{t("cs")}</p>
+        {!result?<div>
+          <textarea value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder={t("ph")} style={{width:"100%",minHeight:180,padding:"16px 18px",border:"2px solid #E5E7EB",borderRadius:14,fontSize:14,resize:"vertical",outline:"none",lineHeight:1.5,boxSizing:"border-box",fontFamily:"inherit"}} onFocus={e=>e.target.style.borderColor=P} onBlur={e=>e.target.style.borderColor="#E5E7EB"}/>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:12}}>
+            <span style={{fontSize:12,color:"#9CA3AF"}}>{prompt.length} {t("chr")}</span>
+            <button onClick={()=>{if(prompt.trim())doAnalyze()}} style={{background:P,color:"white",border:"none",padding:"12px 32px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t("ck")}</button>
+          </div>
+        </div>:<div>
+          <div style={{display:"grid",gridTemplateColumns:"200px 1fr",gap:24,marginBottom:24}}>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:g.bg,borderRadius:16,padding:"24px 16px",border:`2px solid ${g.border}`}}>
+              <svg width={110} height={110} style={{transform:"rotate(-90deg)"}}><circle cx={55} cy={55} r={46} fill="none" stroke="#E5E7EB" strokeWidth={8}/><circle cx={55} cy={55} r={46} fill="none" stroke={g.color} strokeWidth={8} strokeDasharray={289} strokeDashoffset={289-(result.score/100)*289} strokeLinecap="round" style={{transition:"stroke-dashoffset 1s ease"}}/><text x={55} y={48} textAnchor="middle" dominantBaseline="central" fill={g.color} fontSize={42} fontWeight={800} style={{transform:"rotate(90deg)",transformOrigin:"center"}}>{g.letter}</text><text x={55} y={75} textAnchor="middle" fill="#9CA3AF" fontSize={11} fontWeight={500} style={{transform:"rotate(90deg)",transformOrigin:"center"}}>grade</text></svg>
+              <div style={{fontSize:16,fontWeight:700,color:g.color,marginTop:4}}>{g.label}</div>
+            </div>
+            <div>
+              <div style={{fontSize:16,fontWeight:700,color:"#111827",marginBottom:12}}>{t("res")}</div>
+              {result.breakdown.map(c=>{const pct=Math.round((c.earned/c.pts)*100);const col=pct>=70?"#16A34A":pct>=40?"#CA8A04":"#DC2626";return(
+                <div key={c.id} style={{marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:13,fontWeight:600,color:"#374151"}}>{t(c.k)}</span>{c.found?<span style={{fontSize:10,color:"#16A34A",fontWeight:600}}>{t("fnd")}</span>:<span style={{fontSize:10,color:"#DC2626",fontWeight:600}}>{t("mis")}</span>}</div>
+                    <span style={{fontSize:11,color:"#6B7280"}}>{c.earned}/{c.pts} {t("pts")||"pts"}</span>
+                  </div>
+                  <MiniBar v={pct} color={col}/>
+                  {!c.found&&<div style={{marginTop:4,fontSize:11,color:"#6B7280",background:"#F9FAFB",padding:"6px 10px",borderRadius:6,border:"1px solid #F3F4F6"}}><strong>{t("tip")}</strong> {t(c.kt)}. <span style={{color:"#9CA3AF"}}>{t("tryL")} "{t(c.ke)}"</span></div>}
+                </div>)})}
+            </div>
+          </div>
+          <div style={{display:"flex",gap:12}}>
+            <button onClick={()=>{setPrompt("");setResult(null)}} style={{background:P,color:"white",border:"none",padding:"12px 28px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t("ta")}</button>
+            <button onClick={()=>setResult(null)} style={{background:"white",color:P,border:`2px solid ${P}`,padding:"12px 28px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t("et")}</button>
+          </div>
+        </div>}
+      </div>}
+
+      {/* TIPS */}
+      {view==="tips"&&<div>
+        <h1 style={{fontSize:22,fontWeight:700,color:"#111827",marginBottom:4}}>{t("tt")}</h1>
+        <p style={{fontSize:13,color:"#6B7280",marginBottom:24}}>{t("ts")}</p>
+        <div style={{fontSize:14,fontWeight:700,color:"#111827",marginBottom:14}}>{t("diff")}</div>
+        {[{bad:t("e1b"),good:EX1_GOOD,why:t("e1w")},{bad:t("e2b"),good:EX2_GOOD,why:t("e2w")}].map((ex,i)=><div key={i} style={{background:"#FAFAFA",borderRadius:14,padding:"20px 22px",marginBottom:14,border:"1px solid #F3F4F6"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:12}}>
+            <div><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}><span style={{width:28,height:28,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",background:"#FEE2E2",fontWeight:800,fontSize:14,color:"#DC2626"}}>C</span><span style={{fontSize:12,fontWeight:700,color:"#DC2626"}}>{t("bef")}</span></div><div style={{fontSize:13,color:"#6B7280",background:"white",padding:"10px 12px",borderRadius:8,border:"1px solid #E5E7EB",fontStyle:"italic",lineHeight:1.4}}>"{ex.bad}"</div></div>
+            <div><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}><span style={{width:28,height:28,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",background:"#DCFCE7",fontWeight:800,fontSize:14,color:"#16A34A"}}>A</span><span style={{fontSize:12,fontWeight:700,color:"#16A34A"}}>{t("aft")}</span></div><div style={{fontSize:13,color:"#374151",background:"white",padding:"10px 12px",borderRadius:8,border:"1px solid #E5E7EB",lineHeight:1.4}}>"{ex.good}"</div></div>
+          </div>
+          <div style={{fontSize:12,color:"#5B4A7A",background:"#F3E8F9",padding:"8px 12px",borderRadius:8,border:"1px solid #D8B4FE"}}><strong>{t("why")}</strong> {ex.why}</div>
+        </div>)}
+        <div style={{fontSize:14,fontWeight:700,color:"#111827",marginBottom:14}}>{t("pro")}</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+          {CRIT.map(c=><div key={c.id} style={{background:"white",borderRadius:12,padding:16,border:"1px solid #E5E7EB"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}><span style={{fontSize:13,fontWeight:700,color:"#374151"}}>{t(c.k)}</span><span style={{fontSize:10,fontWeight:700,color:P,background:"#F3E8F9",padding:"2px 8px",borderRadius:4}}>{c.pts} pts</span></div><div style={{fontSize:12,color:"#6B7280",marginBottom:6,lineHeight:1.4}}>{t(c.kt)}</div><div style={{fontSize:11,color:"#9CA3AF",fontStyle:"italic",lineHeight:1.3}}>{t("tryL")} "{t(c.ke)}"</div></div>)}
+        </div>
+      </div>}
+
+      {/* BADGES */}
+      {view==="badges"&&<div>
+        <h1 style={{fontSize:22,fontWeight:700,color:"#111827",marginBottom:4}}>{t("bt")}</h1>
+        <p style={{fontSize:13,color:"#6B7280",marginBottom:24}}>{t("bs")}</p>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
+          {BADGES_DEF.map(b=>{const earned=earnedBadges.find(e=>e.id===b.id);return(
+            <div key={b.id} style={{background:earned?"white":"#F9FAFB",borderRadius:14,padding:"24px 20px",textAlign:"center",border:earned?"2px solid #4ADE80":"2px dashed #D1D5DB",opacity:earned?1:0.5}}>
+              <div style={{fontSize:40,marginBottom:8,filter:earned?"none":"grayscale(100%)"}}>{b.icon}</div>
+              <div style={{fontSize:14,fontWeight:700,color:earned?"#111827":"#9CA3AF"}}>{t(b.n)}</div>
+              <div style={{fontSize:12,color:earned?"#6B7280":"#D1D5DB",marginTop:4}}>{t(b.d)}</div>
+              <div style={{fontSize:10,fontWeight:700,color:earned?"#16A34A":"#D1D5DB",marginTop:8}}>{earned?t("er"):t("lk")}</div>
+            </div>)})}
+        </div>
+        {stats.total===0&&<div style={{textAlign:"center",marginTop:24}}><div onClick={()=>setView("coach")} style={{display:"inline-flex",alignItems:"center",gap:8,background:P,color:"white",padding:"12px 28px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>{t("se")}</div></div>}
+      </div>}
+
+      {/* ACCOUNT */}
+      {view==="account"&&<div>
+        <h1 style={{fontSize:22,fontWeight:700,color:"#111827",marginBottom:4}}>{t("at")}</h1>
+        <p style={{fontSize:13,color:"#6B7280",marginBottom:24}}>{t("as")}</p>
+        <div style={{maxWidth:600}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+            <div><label style={LBL}>{t("fn")}</label><input value={profile.firstName} onChange={e=>setProfile({...profile,firstName:e.target.value})} style={IS}/></div>
+            <div><label style={LBL}>{t("ln")}</label><input value={profile.lastName} onChange={e=>setProfile({...profile,lastName:e.target.value})} style={IS}/></div>
+          </div>
+          <div style={{marginBottom:14}}><label style={LBL}>{t("loc")}</label><select value={profile.location} onChange={e=>setProfile({...profile,location:e.target.value})} style={{...IS,background:"white"}}>{LOCATIONS.map(l=><option key={l}>{l}</option>)}</select></div>
+          <div style={{marginBottom:14}}><label style={LBL}>{t("dept")}</label><select value={profile.department} onChange={e=>setProfile({...profile,department:e.target.value})} style={{...IS,background:"white"}}>{DEPTS.map(d=><option key={d}>{d}</option>)}</select></div>
+          <div style={{marginBottom:14}}><label style={LBL}>{t("jt")}</label><input value={profile.jobTitle} onChange={e=>setProfile({...profile,jobTitle:e.target.value})} style={IS}/></div>
+          <div style={{marginBottom:14}}><label style={LBL}>{t("ctk")}</label><textarea value={profile.commonTasks} onChange={e=>setProfile({...profile,commonTasks:e.target.value})} style={{...IS,minHeight:70,resize:"vertical",lineHeight:1.4}}/></div>
+          <div style={{marginBottom:20}}><label style={LBL}>{t("cwf")}</label><textarea value={profile.commonWorkflows} onChange={e=>setProfile({...profile,commonWorkflows:e.target.value})} style={{...IS,minHeight:70,resize:"vertical",lineHeight:1.4}}/></div>
+          <div style={{display:"flex",gap:12,marginBottom:20}}>
+            <button onClick={()=>{if(soundEnabled)playSuccessSound();setProfileSaved(true);setTimeout(()=>setProfileSaved(false),2500)}} style={{background:P,color:"white",border:"none",padding:"12px 28px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t("sp")}</button>
+            {profileSaved&&<span style={{fontSize:13,color:"#16A34A",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>{t("sv")}</span>}
+          </div>
+          <div style={{borderTop:"1px solid #E5E7EB",paddingTop:20,marginTop:8}}>
+            <div style={{fontSize:14,fontWeight:700,color:"#111827",marginBottom:14}}>{t("set")}</div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 0",borderBottom:"1px solid #F3F4F6"}}>
+              <div><div style={{fontSize:13,fontWeight:600,color:"#374151"}}>{t("sfx")}</div><div style={{fontSize:11,color:"#9CA3AF"}}>{t("sfd")}</div></div>
+              <div onClick={()=>setSoundEnabled(!soundEnabled)} style={{width:44,height:24,borderRadius:12,background:soundEnabled?"#16A34A":"#D1D5DB",cursor:"pointer",position:"relative",transition:"background 0.2s"}}><div style={{width:20,height:20,borderRadius:10,background:"white",position:"absolute",top:2,left:soundEnabled?22:2,transition:"left 0.2s",boxShadow:"0 1px 3px rgba(0,0,0,0.15)"}}/></div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 0",borderBottom:"1px solid #F3F4F6"}}>
+              <div><div style={{fontSize:13,fontWeight:600,color:"#374151"}}>{t("rpw")}</div><div style={{fontSize:11,color:"#9CA3AF"}}>{t("rpd")}</div></div>
+              <button style={{background:"white",color:P,border:`1.5px solid ${P}`,padding:"6px 16px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{t("rb")}</button>
+            </div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 0"}}>
+              <div><div style={{fontSize:13,fontWeight:600,color:"#374151"}}>{t("lang")}</div><div style={{fontSize:11,color:"#9CA3AF"}}>{t("ld")}</div></div>
+              <select value={lang} onChange={e=>setLang(e.target.value)} style={{padding:"6px 12px",border:"1.5px solid #E5E7EB",borderRadius:8,fontSize:12,outline:"none",background:"white",fontFamily:"inherit"}}>{LANGS.map(l=><option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
+            </div>
+          </div>
+          <div style={{marginTop:20,background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:8,padding:"10px 14px",display:"flex",gap:8,alignItems:"flex-start"}}>
+            <span style={{fontSize:12,color:"#9CA3AF",flexShrink:0,marginTop:1}}>ℹ</span>
+            <div style={{fontSize:11,color:"#6B7280",lineHeight:1.55}}>{t("pn")}</div>
+          </div>
+        </div>
+      </div>}
+      </div>
+
+      {/* POWERED BY */}
+      <div style={{position:"fixed",bottom:14,right:24,display:"flex",alignItems:"center",gap:8,background:"white",padding:"8px 18px",borderRadius:24,border:"1px solid #E5E7EB",boxShadow:"0 2px 8px rgba(0,0,0,0.06)",zIndex:100}}>
+        <span style={{fontSize:12,color:"#9CA3AF"}}>powered by</span>
+        <svg width={20} height={20} viewBox="0 0 24 24"><path d="M12 2L20 7V13L12 18L4 13V7L12 2Z" fill="none" stroke="#3ECF8E" strokeWidth="1.5"/><path d="M12 6L16 8.5V13.5L12 16L8 13.5V8.5L12 6Z" fill="#3ECF8E" opacity="0.55"/></svg>
+        <span style={{fontSize:14,fontWeight:700,color:"#3ECF8E"}}>Workhelix</span>
+      </div>
+
+      <style>{`@keyframes slideDown{from{transform:translateX(-50%) translateY(-20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}`}</style>
+    </div>);
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
+</script>
+</body>
+</html>
