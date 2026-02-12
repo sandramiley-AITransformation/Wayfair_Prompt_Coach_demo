@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WayfairGPT Executive Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif; background: #FAFAFA; color: #1F2937; }
+
+  /* LOGIN GATE */
+  #login-gate { position: fixed; inset: 0; background: #FAFAFA; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+  .login-box { background: white; border: 1px solid #E5E7EB; border-radius: 16px; padding: 40px 44px; width: 400px; box-shadow: 0 4px 24px rgba(0,0,0,0.06); text-align: center; }
+  .login-box svg { margin-bottom: 16px; }
+  .login-box h1 { font-size: 18px; font-weight: 700; color: #7F187F; margin-bottom: 4px; }
+  .login-box p { font-size: 13px; color: #6B7280; margin-bottom: 24px; }
+  .login-box label { display: block; text-align: left; font-size: 11px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+  .login-box input { width: 100%; padding: 10px 14px; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 14px; font-family: inherit; margin-bottom: 16px; outline: none; transition: border 0.15s; }
+  .login-box input:focus { border-color: #7F187F; }
+  .login-box button { width: 100%; padding: 12px; background: #7F187F; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; transition: background 0.15s; }
+  .login-box button:hover { background: #6B1268; }
+  .login-error { color: #DC2626; font-size: 12px; font-weight: 600; margin-bottom: 12px; display: none; }
+
+  /* APP */
+  #app { display: none; opacity: 0; transition: opacity 0.5s; }
+  #app.visible { display: block; opacity: 1; }
+
+  /* HEADER */
+  .header { background: white; border-bottom: 1px solid #E5E7EB; padding: 12px 28px; display: flex; align-items: center; justify-content: space-between; }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .header-title { font-size: 15px; font-weight: 600; color: #374151; }
+  .wayfair-name { font-size: 17px; font-weight: 700; color: #7F187F; letter-spacing: -0.02em; }
+  .header-divider { color: #D1D5DB; font-size: 14px; margin: 0 4px; }
+  .header-right { font-size: 12px; color: #9CA3AF; }
+
+  /* LAYOUT */
+  .layout { display: flex; min-height: calc(100vh - 52px); }
+  .sidebar { width: 195px; border-right: 1px solid #E5E7EB; padding: 18px 10px; flex-shrink: 0; background: white; }
+  .main { flex: 1; padding: 22px 30px; overflow-y: auto; max-height: calc(100vh - 52px); }
+
+  /* NAV */
+  .nav-item { padding: 9px 14px; border-radius: 8px; margin-bottom: 2px; cursor: pointer; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 9px; color: #6B7280; transition: all 0.15s; }
+  .nav-item:hover { background: #F9FAFB; }
+  .nav-item.active { color: #7F187F; background: #F3E8F9; }
+
+  /* SIDEBAR SECTIONS */
+  .sidebar-section { margin-top: 24px; padding: 0 14px; }
+  .sidebar-label { font-size: 10px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px; font-weight: 700; }
+  .sidebar select { width: 100%; padding: 7px 8px; border-radius: 6px; background: #F9FAFB; border: 1px solid #E5E7EB; color: #374151; font-size: 12px; cursor: pointer; outline: none; font-family: inherit; }
+
+  /* BENCHMARK LEGEND */
+  .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .legend-label { font-size: 12px; color: #374151; font-weight: 600; }
+  .legend-range { font-size: 11px; color: #6B7280; margin-left: auto; font-weight: 500; }
+
+  /* CARDS */
+  .card { background: white; border: 1px solid #E5E7EB; border-radius: 10px; padding: 18px 22px; }
+  .kpi-card { background: white; border: 1px solid #E5E7EB; border-radius: 10px; padding: 16px 18px; }
+  .kpi-label { font-size: 10px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; font-weight: 600; }
+  .kpi-value { font-size: 28px; font-weight: 700; }
+  .kpi-trend { font-size: 10px; color: #6B7280; margin-top: 3px; }
+
+  /* GRIDS */
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+  /* FOOTNOTE */
+  .footnote { margin-top: 10px; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; padding: 10px 14px; display: flex; gap: 8px; align-items: flex-start; }
+  .footnote-icon { font-size: 12px; color: #9CA3AF; flex-shrink: 0; margin-top: 1px; }
+  .footnote-text { font-size: 11px; color: #6B7280; line-height: 1.55; }
+  .footnote-text strong { color: #374151; }
+
+  /* BADGE */
+  .badge { font-size: 9px; padding: 2px 7px; border-radius: 4px; font-weight: 700; display: inline-block; }
+  .badge-green { background: #DCFCE7; color: #16A34A; border: 1.5px solid #4ADE80; }
+  .badge-yellow { background: #FEF9C3; color: #CA8A04; border: 1.5px solid #FACC15; }
+  .badge-red { background: #FEE2E2; color: #DC2626; border: 1.5px solid #F87171; }
+
+  /* DEPT CARD */
+  .dept-card { background: white; border: 1px solid #E5E7EB; border-radius: 10px; padding: 18px 22px; cursor: pointer; transition: box-shadow 0.15s; }
+  .dept-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .loc-chip { font-size: 9px; background: #F9FAFB; padding: 2px 6px; border-radius: 3px; border: 1px solid #E5E7EB; color: #6B7280; display: inline-block; margin: 2px 2px 0 0; }
+
+  /* TABLE */
+  .opp-header { display: grid; padding: 10px 18px; border-bottom: 1px solid #E5E7EB; font-size: 9px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+  .opp-row { display: grid; padding: 12px 18px; border-bottom: 1px solid #F3F4F6; align-items: center; font-size: 12px; }
+  .opp-row:last-child { border-bottom: none; }
+  .opp-cols { grid-template-columns: 0.25fr 1.5fr 0.9fr 1.2fr 0.5fr 0.5fr 0.6fr 0.45fr; }
+
+  /* REGION BAR */
+  .region-card { background: white; border: 1px solid #E5E7EB; border-radius: 10px; padding: 18px 22px; margin-bottom: 16px; }
+
+  /* POWERED BY */
+  .powered-by { position: fixed; bottom: 12px; right: 24px; display: flex; align-items: center; gap: 6px; background: white; padding: 5px 14px; border-radius: 20px; border: 1px solid #E5E7EB; box-shadow: 0 1px 3px rgba(0,0,0,0.04); z-index: 100; }
+
+  /* PAGE TITLE */
+  .page-title { font-size: 21px; font-weight: 700; margin: 0 0 4px; color: #111827; }
+  .page-subtitle { font-size: 13px; color: #6B7280; margin: 0 0 22px; }
+
+  /* HIDDEN */
+  .hidden { display: none !important; }
+
+  /* METHODOLOGY CARD */
+  .method-card { background: #F9FAFB; border-radius: 8px; padding: 12px 14px; border: 1px solid #F3F4F6; }
+
+  /* BACK LINK */
+  .back-link { font-size: 12px; color: #7F187F; cursor: pointer; margin-bottom: 14px; font-weight: 500; }
+  .back-link:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN GATE -->
+<div id="login-gate">
+  <div class="login-box">
+    <svg width="40" height="40" viewBox="0 0 40 40"><path d="M20 4 L28 12 L20 20 L12 12 Z" fill="#7F187F"/><path d="M28 12 L36 20 L28 28 L20 20 Z" fill="#C6D636"/><path d="M20 20 L28 28 L20 36 L12 28 Z" fill="#82D170"/><path d="M12 12 L20 20 L12 28 L4 20 Z" fill="#F8CF1C"/></svg>
+    <h1>WayfairGPT Executive Dashboard</h1>
+    <p>Enter credentials to access the prototype</p>
+    <div id="login-error" class="login-error">Invalid username or password</div>
+    <label>Username</label>
+    <input type="text" id="login-user" autocomplete="off" spellcheck="false">
+    <label>Password</label>
+    <input type="password" id="login-pass">
+    <button id="login-btn">Sign In</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <svg width="30" height="30" viewBox="0 0 40 40"><path d="M20 4 L28 12 L20 20 L12 12 Z" fill="#7F187F"/><path d="M28 12 L36 20 L28 28 L20 20 Z" fill="#C6D636"/><path d="M20 20 L28 28 L20 36 L12 28 Z" fill="#82D170"/><path d="M12 12 L20 20 L12 28 L4 20 Z" fill="#F8CF1C"/></svg>
+      <span class="wayfair-name">wayfair</span>
+      <span class="header-divider">|</span>
+      <span class="header-title">WayfairGPT Executive Dashboard</span>
+    </div>
+    <div class="header-right">Week 2 of 6 · Analysis Phase</div>
+  </div>
+
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="nav-item active" data-view="dashboard">◉ Overview</div>
+      <div class="nav-item" data-view="departments">⊞ Departments</div>
+      <div class="nav-item" data-view="regions">◈ Regions</div>
+      <div class="nav-item" data-view="opportunities">△ Opportunities</div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">Filter by Region</div>
+        <select id="region-filter">
+          <option value="all">All Regions</option>
+          <option value="Boston">Boston (HQ)</option>
+          <option value="Bangalore">Bangalore</option>
+          <option value="Mountain View">Mountain View</option>
+          <option value="London">London</option>
+          <option value="Toronto">Toronto</option>
+          <option value="Galway">Galway</option>
+          <option value="Shanghai">Shanghai</option>
+          <option value="Remote">Remote</option>
+        </select>
+      </div>
+
+      <div class="sidebar-section" style="margin-top:24px">
+        <div class="sidebar-label" style="margin-bottom:10px">Score Benchmarks</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#DCFCE7;border:2px solid #4ADE80"></div><span class="legend-label">On Track</span><span class="legend-range">≥ 70</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#FEF9C3;border:2px solid #FACC15"></div><span class="legend-label">Needs Attention</span><span class="legend-range">50–69</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#FEE2E2;border:2px solid #F87171"></div><span class="legend-label">At Risk</span><span class="legend-range">< 50</span></div>
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main" id="main-content"></div>
+  </div>
+
+  <!-- POWERED BY -->
+  <div class="powered-by">
+    <span style="font-size:10px;color:#9CA3AF">powered by</span>
+    <svg width="14" height="14" viewBox="0 0 24 24"><path d="M12 2L20 7V13L12 18L4 13V7L12 2Z" fill="none" stroke="#3ECF8E" stroke-width="1.5"/><path d="M12 6L16 8.5V13.5L12 16L8 13.5V8.5L12 6Z" fill="#3ECF8E" opacity="0.55"/></svg>
+    <span style="font-size:12px;font-weight:600;color:#3ECF8E">Workhelix</span>
+  </div>
+</div>
+
+<script>
+// === AUTH ===
+const CREDS = { user: "Exec_Dash_Prototype", pass: "WH/WF_02_14_2026" };
+document.getElementById('login-btn').addEventListener('click', tryLogin);
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin(); });
+document.getElementById('login-user').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('login-pass').focus(); });
+
+function tryLogin() {
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pass').value;
+  if (u === CREDS.user && p === CREDS.pass) {
+    document.getElementById('login-gate').style.display = 'none';
+    const app = document.getElementById('app');
+    app.style.display = 'block';
+    setTimeout(() => app.style.opacity = '1', 30);
+    renderView();
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+
+// === DATA ===
+const TOTAL_EMPLOYEES = 13500;
+
+const DEPTS = [
+  { id:"eng_tech", name:"Engineering & Technology", employees:1850, avgScore:74, weeklyPrompts:11200, topTask:"Code generation & review", taskScore:0.88, wow:3.1, locations:["Boston (HQ)","Bangalore","Mountain View","London"], color:"#6366F1" },
+  { id:"fulfillment", name:"Fulfillment & Home Delivery", employees:2400, avgScore:38, weeklyPrompts:820, topTask:"Route optimization comms", taskScore:0.52, wow:0.4, locations:["Cranbury, NJ","Savannah, GA","Plainfield, IN","Hebron, KY"], color:"#F97316" },
+  { id:"business_ops", name:"Business & Operations", employees:680, avgScore:62, weeklyPrompts:2100, topTask:"Process documentation", taskScore:0.76, wow:2.8, locations:["Boston (HQ)","Mountain View"], color:"#8B5CF6" },
+  { id:"customer_service", name:"Customer Service", employees:3200, avgScore:55, weeklyPrompts:14800, topTask:"Response drafting", taskScore:0.78, wow:1.6, locations:["Boston","Athens, GA","Galway, Ireland","Remote (US/UK/Poland)"], color:"#EC4899" },
+  { id:"sales", name:"Sales", employees:520, avgScore:59, weeklyPrompts:1900, topTask:"Proposal generation", taskScore:0.74, wow:2.2, locations:["Boston (HQ)","London","Mountain View"], color:"#14B8A6" },
+  { id:"marketing", name:"Marketing", employees:340, avgScore:68, weeklyPrompts:3400, topTask:"Ad copy & SEO titles", taskScore:0.84, wow:3.8, locations:["Boston (HQ)","London","Toronto"], color:"#F59E0B" },
+  { id:"hr", name:"HR", employees:180, avgScore:47, weeklyPrompts:540, topTask:"Job descriptions", taskScore:0.65, wow:1.1, locations:["Boston (HQ)","London"], color:"#EF4444" },
+  { id:"finance", name:"Finance", employees:260, avgScore:51, weeklyPrompts:780, topTask:"Financial analysis summaries", taskScore:0.69, wow:1.4, locations:["Boston (HQ)"], color:"#0EA5E9" },
+  { id:"it", name:"IT", employees:420, avgScore:71, weeklyPrompts:2800, topTask:"Ticket resolution scripts", taskScore:0.85, wow:2.5, locations:["Boston (HQ)","Bangalore","Galway"], color:"#10B981" },
+  { id:"supply_chain", name:"Supply Chain", employees:380, avgScore:43, weeklyPrompts:640, topTask:"Supplier communications", taskScore:0.58, wow:-0.3, locations:["Boston (HQ)","Shanghai","Toronto"], color:"#78716C" },
+  { id:"merchandising", name:"Merchandising", employees:610, avgScore:76, weeklyPrompts:4200, topTask:"Product descriptions", taskScore:0.89, wow:4.5, locations:["Boston (HQ)","London","Mountain View"], color:"#7F187F" },
+];
+
+const OPPS = [
+  { task:"Customer Response Drafting", dept:"Customer Service", region:"Boston, Athens GA, Galway, Remote", cur:55, pot:86, hours:58000, val:2800000, valLabel:"$2.8M", priority:"high" },
+  { task:"Code Generation & Review", dept:"Engineering & Technology", region:"Boston (HQ), Bangalore, Mountain View, London", cur:74, pot:92, hours:19600, val:2400000, valLabel:"$2.4M", priority:"medium" },
+  { task:"Product Description Writing", dept:"Merchandising", region:"Boston (HQ), London, Mountain View", cur:76, pot:94, hours:22400, val:1900000, valLabel:"$1.9M", priority:"high" },
+  { task:"Ad Copy & SEO Optimization", dept:"Marketing", region:"Boston (HQ), London, Toronto", cur:68, pot:91, hours:9200, val:1100000, valLabel:"$1.1M", priority:"high" },
+  { task:"Ticket Resolution Scripts", dept:"IT", region:"Boston (HQ), Bangalore, Galway", cur:71, pot:89, hours:7400, val:780000, valLabel:"$780K", priority:"medium" },
+  { task:"Process Documentation", dept:"Business & Operations", region:"Boston (HQ), Mountain View", cur:62, pot:84, hours:5100, val:520000, valLabel:"$520K", priority:"medium" },
+  { task:"Supplier Communications", dept:"Supply Chain", region:"Boston (HQ), Shanghai, Toronto", cur:43, pot:75, hours:3400, val:360000, valLabel:"$360K", priority:"low" },
+];
+// Already sorted by value descending
+
+const REGIONS = [
+  { label:"Boston (HQ)", match:"Boston" },
+  { label:"Mountain View, CA", match:"Mountain View" },
+  { label:"Bangalore, India", match:"Bangalore" },
+  { label:"London, UK", match:"London" },
+  { label:"Toronto, Canada", match:"Toronto" },
+  { label:"Galway, Ireland", match:"Galway" },
+  { label:"Shanghai, China", match:"Shanghai" },
+  { label:"Athens, GA", match:"Athens" },
+  { label:"US Fulfillment Centers", match:"Cranbury" },
+  { label:"Remote (US/UK/Poland)", match:"Remote" },
+];
+
+// === HELPERS ===
+const P = "#7F187F";
+function sColor(s) { return s >= 70 ? "#16A34A" : s >= 50 ? "#CA8A04" : "#DC2626"; }
+function sBg(s) { return s >= 70 ? "#DCFCE7" : s >= 50 ? "#FEF9C3" : "#FEE2E2"; }
+function sBorder(s) { return s >= 70 ? "#4ADE80" : s >= 50 ? "#FACC15" : "#F87171"; }
+function sLabel(s) { return s >= 70 ? "On Track" : s >= 50 ? "Needs Attention" : "At Risk"; }
+function badgeClass(s) { return s >= 70 ? "badge-green" : s >= 50 ? "badge-yellow" : "badge-red"; }
+function priBadge(p) { return p === "high" ? "badge-green" : p === "medium" ? "badge-yellow" : "badge-red"; }
+function num(n) { return n.toLocaleString(); }
+
+function scoreRingSVG(score, size=54, sw=4) {
+  const r = (size - sw) / 2, circ = 2 * Math.PI * r, off = circ - (score / 100) * circ;
+  return `<svg width="${size}" height="${size}" style="transform:rotate(-90deg)"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="#E5E7EB" stroke-width="${sw}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${sColor(score)}" stroke-width="${sw}" stroke-dasharray="${circ}" stroke-dashoffset="${off}" stroke-linecap="round" style="transition:stroke-dashoffset 1s ease"/><text x="${size/2}" y="${size/2}" text-anchor="middle" dominant-baseline="central" fill="#1F2937" font-size="${size*0.28}" font-weight="700" style="transform:rotate(90deg);transform-origin:center">${score}</text></svg>`;
+}
+
+function miniBar(value, color) {
+  return `<div style="width:100%;height:6px;background:#E5E7EB;border-radius:3px"><div style="width:${value}%;height:100%;background:${color};border-radius:3px;transition:width 0.8s ease"></div></div>`;
+}
+
+// === STATE ===
+let currentView = 'dashboard';
+let regionFilter = 'all';
+let selectedDept = null;
+
+function getFilteredDepts() {
+  if (regionFilter === 'all') return DEPTS;
+  return DEPTS.filter(d => d.locations.some(l => l.includes(regionFilter)));
+}
+
+// === NAV ===
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => {
+    currentView = el.dataset.view;
+    selectedDept = null;
+    updateNav();
+    renderView();
+  });
+});
+
+document.getElementById('region-filter').addEventListener('change', e => {
+  regionFilter = e.target.value;
+  renderView();
+});
+
+function updateNav() {
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.view === currentView);
+  });
+}
+
+// === RENDER ===
+function renderView() {
+  const main = document.getElementById('main-content');
+  if (currentView === 'dashboard') renderDashboard(main);
+  else if (currentView === 'departments') { selectedDept ? renderDeptDetail(main) : renderDepartments(main); }
+  else if (currentView === 'regions') renderRegions(main);
+  else if (currentView === 'opportunities') renderOpportunities(main);
+}
+
+// === DASHBOARD ===
+function renderDashboard(el) {
+  const depts = getFilteredDepts();
+  const orgAvg = Math.round(depts.reduce((s,d) => s + d.avgScore, 0) / depts.length);
+  const totalPrompts = depts.reduce((s,d) => s + d.weeklyPrompts, 0);
+  const regionTag = regionFilter !== 'all' ? ` <span style="color:${P};font-weight:600">· ${regionFilter}</span>` : '';
+
+  // Sort for overview Top Opportunities — by value descending
+  const topOpps = [...OPPS].slice(0, 4);
+
+  el.innerHTML = `
+    <h1 class="page-title">Prompt Quality Overview</h1>
+    <p class="page-subtitle">${num(TOTAL_EMPLOYEES)} employees · ${num(totalPrompts)} prompts/week${regionTag}</p>
+
+    <div class="grid-4" style="margin-bottom:14px">
+      <div class="kpi-card">
+        <div class="kpi-label">Org Prompt Score</div>
+        <div class="kpi-value" style="color:${sColor(orgAvg)}">${orgAvg}<span style="font-size:14px;font-weight:500;color:#9CA3AF">/100</span></div>
+        <div class="kpi-trend">+9 pts since W1</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Weekly Prompts</div>
+        <div class="kpi-value" style="color:#6366F1">${num(totalPrompts)}</div>
+        <div class="kpi-trend">+18% vs W1</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Adoption Rate</div>
+        <div style="display:flex;align-items:baseline;gap:6px">
+          <span class="kpi-value" style="color:#CA8A04">64%</span>
+          <span class="badge badge-yellow">Needs Attention</span>
+        </div>
+        <div class="kpi-trend">+17 pts since W1 · Target: ≥80% by W6</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Est. Annual Value</div>
+        <div class="kpi-value" style="color:${P}">$9.9M</div>
+        <div class="kpi-trend">Unlock via prompt optimization</div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:14px">
+      <div class="card">
+        <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:3px">Department Scores</div>
+        <div style="font-size:11px;color:#6B7280;margin-bottom:16px">Current prompt quality by team</div>
+        ${[...depts].sort((a,b) => b.avgScore - a.avgScore).slice(0,8).map(d => `
+          <div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+              <div style="display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:2px;background:${d.color}"></div><span style="font-size:11px;color:#374151">${d.name}</span></div>
+              <span style="font-size:11px;font-weight:700;color:${sColor(d.avgScore)}">${d.avgScore}</span>
+            </div>
+            ${miniBar(d.avgScore, d.color)}
+          </div>
+        `).join('')}
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+          <div style="font-size:14px;font-weight:700;color:#111827">Top Value Opportunities</div>
+          <div style="font-size:12px;color:${P};cursor:pointer;font-weight:500" onclick="currentView='opportunities';updateNav();renderView()">View all →</div>
+        </div>
+        <div style="font-size:11px;color:#6B7280;margin-bottom:16px">Ranked by annual value · highest first</div>
+        ${topOpps.map((o,i) => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;${i < 3 ? 'border-bottom:1px solid #F3F4F6' : ''}">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;background:${sBg(o.cur)};color:${sColor(o.cur)};border:1.5px solid ${sBorder(o.cur)};flex-shrink:0">${i+1}</span>
+              <div><div style="font-size:12px;font-weight:600;color:#111827">${o.task}</div><div style="font-size:10px;color:#9CA3AF">${o.dept}</div></div>
+            </div>
+            <div style="text-align:right"><div style="font-size:16px;font-weight:700;color:#16A34A">${o.valLabel}</div><div style="font-size:10px;color:#9CA3AF">${o.cur} → ${o.pot}</div></div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- FOOTNOTES moved below -->
+    <div class="grid-2">
+      <div class="footnote">
+        <span class="footnote-icon">ℹ</span>
+        <div class="footnote-text"><strong>How Prompt Scores are calculated:</strong> Each prompt is evaluated against 6 weighted criteria totaling 100 points — Role & Context (25), Specificity (25), Output Format (20), Examples (15), Guardrails (10), Iteration Cue (5). Scores reflect organization-wide averages from sampled WayfairGPT interactions. See full rubric on the Opportunities page.</div>
+      </div>
+      <div class="footnote">
+        <span class="footnote-icon">ℹ</span>
+        <div class="footnote-text"><strong>How Value is derived:</strong> Annual value estimates model hours saved per prompt-quality-point improvement, weighted by HRIS role data and blended compensation rates at the task level. The $9.9M figure represents cumulative opportunity across all departments if scores reach top-performer benchmarks. Pending validation with actual WayfairGPT prompt content data.</div>
+      </div>
+    </div>
+  `;
+}
+
+// === DEPARTMENTS LIST ===
+function renderDepartments(el) {
+  const depts = getFilteredDepts();
+  const regionTag = regionFilter !== 'all' ? ` <span style="color:${P};font-weight:600">· ${regionFilter}</span>` : '';
+  el.innerHTML = `
+    <h1 class="page-title">Department Breakdown</h1>
+    <p class="page-subtitle">Prompt quality and WayfairGPT usage by team${regionTag}</p>
+    <div class="grid-2">
+      ${depts.map(d => `
+        <div class="dept-card" style="border-left:4px solid ${d.color}" onclick="selectedDept=DEPTS.find(x=>x.id==='${d.id}');renderView()">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <div style="font-size:14px;font-weight:700;margin-bottom:3px;color:#111827">${d.name}</div>
+              <div style="font-size:11px;color:#6B7280">${num(d.employees)} employees · ${num(d.weeklyPrompts)} prompts/wk</div>
+              <div style="margin-top:6px">${d.locations.map(l => `<span class="loc-chip">${l}</span>`).join('')}</div>
+            </div>
+            <div style="text-align:center">
+              ${scoreRingSVG(d.avgScore, 54, 4)}
+              <div style="font-size:9px;color:${sColor(d.avgScore)};font-weight:700;margin-top:2px">${sLabel(d.avgScore)}</div>
+            </div>
+          </div>
+          <div style="margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+            <div><div style="font-size:9px;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em">Top Task</div><div style="font-size:11px;color:#374151;margin-top:2px;font-weight:500">${d.topTask}</div></div>
+            <div><div style="font-size:9px;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em">Task Score</div><div style="font-size:11px;color:#374151;margin-top:2px;font-weight:500">${(d.taskScore*100).toFixed(0)}%</div></div>
+            <div><div style="font-size:9px;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em">W/W</div><div style="font-size:11px;color:${d.wow > 0 ? '#16A34A' : '#DC2626'};margin-top:2px;font-weight:500">${d.wow > 0 ? '+' : ''}${d.wow}%</div></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// === DEPT DETAIL ===
+function renderDeptDetail(el) {
+  const d = selectedDept;
+  const actions = [
+    { action: `Deploy ${d.name}-specific prompt templates for "${d.topTask}"`, impact: "High", timeline: "Week 3" },
+    { action: "Run targeted workshop with team leads on advanced prompting patterns", impact: "Medium", timeline: "Week 3-4" },
+    { action: "Set up automated prompt scoring in WayfairGPT for real-time feedback loop", impact: "High", timeline: "Week 5-6" },
+  ];
+  el.innerHTML = `
+    <div class="back-link" onclick="selectedDept=null;renderView()">← Back to departments</div>
+    <div style="display:flex;align-items:center;gap:18px;margin-bottom:24px">
+      ${scoreRingSVG(d.avgScore, 84, 6)}
+      <div>
+        <h1 style="font-size:21px;font-weight:700;margin:0;color:#111827">${d.name}</h1>
+        <p style="font-size:12px;color:#6B7280;margin:4px 0 0">${num(d.employees)} employees · ${num(d.weeklyPrompts)} prompts/wk · ${d.wow > 0 ? '+' : ''}${d.wow}% W/W</p>
+        <div style="margin-top:6px">${d.locations.map(l => `<span style="font-size:10px;background:#F9FAFB;padding:2px 8px;border-radius:4px;border:1px solid #E5E7EB;color:#6B7280;display:inline-block;margin:2px 2px 0 0">${l}</span>`).join('')}</div>
+        <span class="badge ${badgeClass(d.avgScore)}" style="margin-top:8px">${sLabel(d.avgScore)}</span>
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:14px">Recommended Actions</div>
+      ${actions.map((r,i) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;${i < 2 ? 'border-bottom:1px solid #F3F4F6' : ''}">
+          <div style="font-size:12px;color:#374151;flex:1">${r.action}</div>
+          <div style="display:flex;gap:10px;flex-shrink:0">
+            <span class="badge ${r.impact === 'High' ? 'badge-green' : 'badge-yellow'}">${r.impact}</span>
+            <span style="font-size:10px;color:#9CA3AF">${r.timeline}</span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// === REGIONS ===
+function renderRegions(el) {
+  el.innerHTML = `
+    <h1 class="page-title">Prompt Quality by Region</h1>
+    <p class="page-subtitle">Department scores at each Wayfair location</p>
+    ${REGIONS.map(rg => {
+      const depts = DEPTS.filter(d => d.locations.some(l => l.includes(rg.match)));
+      if (!depts.length) return '';
+      const sorted = [...depts].sort((a,b) => b.avgScore - a.avgScore);
+      return `
+        <div class="region-card">
+          <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:4px">${rg.label}</div>
+          <div style="font-size:11px;color:#6B7280;margin-bottom:16px">${sorted.length} department${sorted.length !== 1 ? 's' : ''} · ${num(sorted.reduce((s,d) => s + d.employees, 0))} employees</div>
+          ${sorted.map(d => `
+            <div style="margin-bottom:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:2px;background:${d.color};flex-shrink:0"></div><span style="font-size:12px;color:#374151;font-weight:500">${d.name}</span></div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:12px;font-weight:700;color:${sColor(d.avgScore)}">${d.avgScore}</span>
+                  <span class="badge ${badgeClass(d.avgScore)}">${sLabel(d.avgScore)}</span>
+                </div>
+              </div>
+              <div style="height:10px;background:#E5E7EB;border-radius:5px;overflow:hidden"><div style="width:${d.avgScore}%;height:100%;background:${d.color};border-radius:5px;opacity:0.85"></div></div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }).join('')}
+  `;
+}
+
+// === OPPORTUNITIES ===
+function renderOpportunities(el) {
+  // Already sorted by value descending
+  el.innerHTML = `
+    <h1 class="page-title">Value Opportunities</h1>
+    <p class="page-subtitle">Tasks ranked by ROI potential by improved prompting</p>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="opp-header opp-cols">
+        <span>Rank</span><span>Task</span><span>Department</span><span>Region</span><span>Current</span><span>Potential</span><span>Annual Value</span><span>Priority</span>
+      </div>
+      ${OPPS.map((o,i) => `
+        <div class="opp-row opp-cols">
+          <span style="display:flex;align-items:center;justify-content:center">
+            <span style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:${sBg(o.priority === 'high' ? 70 : o.priority === 'medium' ? 55 : 40)};color:${sColor(o.priority === 'high' ? 70 : o.priority === 'medium' ? 55 : 40)};border:1.5px solid ${sBorder(o.priority === 'high' ? 70 : o.priority === 'medium' ? 55 : 40)}">${i+1}</span>
+          </span>
+          <span style="font-weight:600;color:#111827">${o.task}</span>
+          <span style="color:#6B7280">${o.dept}</span>
+          <span style="color:#6B7280;font-size:11px">${o.region}</span>
+          <span style="color:${sColor(o.cur)};font-weight:700">${o.cur}</span>
+          <span style="color:#16A34A;font-weight:700">${o.pot}</span>
+          <span style="font-weight:700;color:#16A34A">${o.valLabel}</span>
+          <span class="badge ${priBadge(o.priority)}" style="text-transform:capitalize;text-align:center">${o.priority}</span>
+        </div>
+      `).join('')}
+    </div>
+
+    <!-- SCORE GAP METHODOLOGY -->
+    <div class="card" style="margin-top:16px">
+      <div style="font-size:13px;font-weight:700;color:#111827;margin-bottom:10px">Score Gap Methodology</div>
+      <div style="font-size:12px;color:#6B7280;line-height:1.6;margin-bottom:12px">
+        The Prompt Quality Score (0–100) evaluates each prompt against six weighted criteria. Current scores reflect
+        organization-wide averages from sampled WayfairGPT interactions. Potential scores reflect benchmarks from
+        top-performing teams and established prompt engineering best practices.
+      </div>
+      <div class="grid-3">
+        ${[
+          { label:"Role & Context", weight:"25 pts", desc:"Does the prompt define who the AI is and what domain knowledge to use?" },
+          { label:"Specificity", weight:"25 pts", desc:"Are product details, data points, and success criteria included?" },
+          { label:"Output Format", weight:"20 pts", desc:"Is structure, length, tone, and intended use specified?" },
+          { label:"Examples", weight:"15 pts", desc:"Does the prompt include a reference example of desired output?" },
+          { label:"Guardrails", weight:"10 pts", desc:"Are constraints defined to prevent hallucinations and off-brand output?" },
+          { label:"Iteration Cue", weight:"5 pts", desc:"Does the prompt ask the AI to flag low-confidence areas?" },
+        ].map(c => `
+          <div class="method-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span style="font-size:12px;font-weight:700;color:#374151">${c.label}</span>
+              <span style="font-size:10px;font-weight:700;color:${P}">${c.weight}</span>
+            </div>
+            <div style="font-size:11px;color:#6B7280;line-height:1.4">${c.desc}</div>
+          </div>
+        `).join('')}
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:#9CA3AF;line-height:1.5;font-style:italic">
+        Value estimates model hours saved per prompt quality improvement point using HRIS role data and blended compensation rates.
+        Awaiting WayfairGPT prompt content data to validate with actual usage patterns.
+      </div>
+    </div>
+  `;
+}
+</script>
+</body>
+</html>
